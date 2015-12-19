@@ -2,38 +2,27 @@
 #include "Adafruit_ILI9341.h"
 #include "Adafruit_DHT.h"
 
-// Example testing sketch for various DHT humidity/temperature sensors
-// Written by ladyada, public domain
+#define DHTPIN 1     // what pin we're connected to
 
-#define DHTPIN 3     // what pin we're connected to
-
-// Uncomment whatever type you're using!
-#define DHTTYPE DHT11		// DHT 11
-//#define DHTTYPE DHT22		// DHT 22 (AM2302)
-//#define DHTTYPE DHT21		// DHT 21 (AM2301)
-
-// Connect pin 1 (on the left) of the sensor to +5V
-// Connect pin 2 of the sensor to whatever your DHTPIN is
-// Connect pin 4 (on the right) of the sensor to GROUND
-// Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
+#define DHTTYPE DHT22		// DHT 22 (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(A2, A1, A0);
-int minTemp = 23;
-int actualTemp = -1;
+double minTemp = 23;
+double actualTemp = -1;
 int cnt1 = 0;
 int tmr1= 3000;
 boolean isOn = false;
 
 void setup() {
 	Serial.begin(9600);
-	//delay(20000); //Give me a chance to do the "sudo cat /dev/ttyACM0" thingy
 
 	Serial.println("Test!");
 
   Spark.function("text",showText);
   Spark.function("setTemp",setTemp);
-
+	Particle.variable("temp", actualTemp);
+  minTemp = EEPROM.read(0);
 	pinMode(D0, OUTPUT);
 	digitalWrite(D0, LOW);
 	tft.begin();
@@ -42,9 +31,6 @@ void setup() {
 	tft.setTextSize(2);
 	tft.println(dht.getTempCelcius());
 	tft.println(minTemp);
-
-//    while (!Serial.available())
-//        SPARK_WLAN_Loop();
 
 }
 
@@ -81,6 +67,7 @@ int showText(String command) {
 
 int setTemp(String command) {
 	minTemp = command.toInt();
+	EEPROM.write(0,minTemp);
 	cnt1 = 9999;
 	return 1;
 }
