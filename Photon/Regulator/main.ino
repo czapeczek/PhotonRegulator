@@ -1,73 +1,94 @@
-#include "Adafruit_mfGFX.h"
-#include "Adafruit_ILI9341.h"
-#include "Adafruit_DHT.h"
+/*
+  SD card read/write
 
-#define DHTPIN 1     // what pin we're connected to
+ This example shows how to read and write data to and from an SD card file
+ The circuit:
+ * SD card attached to SPI bus as follows:
+  Refer to "libraries/SdFat/Sd2Card_config.h"
 
-#define DHTTYPE DHT22		// DHT 22 (AM2302)
 
-DHT dht(DHTPIN, DHTTYPE);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(A2, A1, A0);
-double minTemp = 23;
-double actualTemp = -1;
-int cnt1 = 0;
-int tmr1= 3000;
-boolean isOn = false;
+ created   Nov 2010
+ by David A. Mellis
+ updated 2 Dec 2010
+ by Tom Igoe
+ modified for Maple(STM32 micros)/libmaple
+ 17 Mar 2012
+ by dinau
 
-void setup() {
-	Serial.begin(9600);
+ This example code is in the public domain.
 
-	Serial.println("Test!");
+ */
 
-  Spark.function("text",showText);
-  Spark.function("setTemp",setTemp);
-	Particle.variable("temp", actualTemp);
-  minTemp = EEPROM.read(0);
-	pinMode(D0, OUTPUT);
-	digitalWrite(D0, LOW);
-	tft.begin();
-	tft.fillScreen(ILI9341_BLACK);
-	tft.setTextColor(ILI9341_WHITE);
-	tft.setTextSize(2);
-	tft.println(dht.getTempCelcius());
-	tft.println(minTemp);
+#include "application.h"
+#include "sd-card-library-photon-compat.h"
 
+File myFile;
+
+// SOFTWARE SPI pin configuration - modify as required
+// The default pins are the same as HARDWARE SPI
+const uint8_t chipSelect = D5;    // Also used for HARDWARE SPI setup
+const uint8_t mosiPin = D3;
+const uint8_t misoPin = D2;
+const uint8_t clockPin = D4;
+
+void setup()
+{
+  Serial.begin(9600);
+  while (!Serial.available());
+
+  Serial.print("Initializing SD card...");
+
+  /*// Initialize HARDWARE SPI with user defined chipSelect
+  if (!SD.begin(chipSelect)) {
+    Serial.println("initialization failed!");
+    return;
+  }*/
+
+//  Comment out above lines and uncomment following lines to use SOFTWARE SPI
+
+  // Initialize SOFTWARE SPI
+  if (!SD.begin(mosiPin, misoPin, clockPin, chipSelect)) {
+    Serial.println("initialization failed!");
+    return;
+  }
+
+
+  Serial.println("initialization done.");
+
+  // open the file. note that only one file can be open at a time,
+  // so you have to close this one before opening another.
+  myFile = SD.open("test.txt", FILE_WRITE);
+
+  // if the file opened okay, write to it:
+  if (myFile) {
+    Serial.print("Writing to test.txt...");
+    myFile.println("testing 1, 2, 3.");
+  // close the file:
+    myFile.close();
+    Serial.println("done.");
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening test.txt");
+  }
+
+  // re-open the file for reading:
+  myFile = SD.open("test.txt");
+  if (myFile) {
+    Serial.println("test.txt:");
+
+    // read from the file until there's nothing else in it:
+    while (myFile.available()) {
+      Serial.write(myFile.read());
+    }
+    // close the file:
+    myFile.close();
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening test.txt");
+  }
 }
 
-void checkTemp(void) {
-	actualTemp = dht.getTempCelcius();
-	if(actualTemp < minTemp) {
-		isOn = true;
-		digitalWrite(D0, HIGH);
-	} else {
-		isOn = false;
-		digitalWrite(D0, LOW);
-	}
-}
-
-void loop(void) {
-	cnt1++;
-	if(cnt1 == 10000) {
-		checkTemp();
-		tft.fillScreen(ILI9341_BLACK);
-	  tft.setTextSize(2);
-		tft.setCursor(20,20);
-		tft.println(dht.getTempCelcius());
-		tft.println(minTemp);
-		cnt1 = 0;
-	}
-
-
-}
-
-int showText(String command) {
-
-  return 1;
-}
-
-int setTemp(String command) {
-	minTemp = command.toInt();
-	EEPROM.write(0,minTemp);
-	cnt1 = 9999;
-	return 1;
+void loop()
+{
+  // nothing happens after setup
 }
